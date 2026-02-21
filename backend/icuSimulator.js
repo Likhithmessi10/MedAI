@@ -1,51 +1,98 @@
-const Patient = require("./models/Patient");
+/**
+ * Realistic Physiological Simulation Model
+ * Replaces simple Math.random() with interconnected vital signs.
+ */
 
-function startICUSimulation(io) {
+const simulatePhysiology = (currentVitals) => {
+  // Destructure current values with clinical defaults if missing
+  let { 
+    hr = 80, 
+    sbp = 120, 
+    dbp = 80, 
+    spo2 = 98, 
+    temp = 37.0 
+  } = currentVitals;
 
-  setInterval(async ()=>{
+  // --- 1. Sepsis/Shock Simulation Logic ---
+  // We simulate a "drift" towards instability. 
+  // If SpO2 drops, SBP usually follows, and HR spikes to compensate.
+  
+  // A small downward bias (0.52 instead of 0.5) makes the patient gradually 
+  // prone to "crashing" unless the simulation reset logic is triggered elsewhere.
+  const spo2Drift = (Math.random() - 0.52) * 0.8;
+  spo2 = Math.min(100, Math.max(70, spo2 + spo2Drift));
 
-    const patients = await Patient.find();
+  // --- 2. Heart Rate (HR) Reaction ---
+  // If SpO2 < 90% (Hypoxia), Heart Rate targets 110-120 bpm (Tachycardia).
+  // Otherwise, it tries to return to a resting state of 80 bpm.
+  const hrTarget = spo2 < 90 ? 115 : 80;
+  hr += (hrTarget - hr) * 0.15 + (Math.random() - 0.5) * 3;
+
+  // --- 3. Blood Pressure (SBP/DBP) Reaction ---
+  // If SpO2 is critically low (< 85%), simulate Septic Shock (BP drop).
+  const bpShockFactor = spo2 < 85 ? -0.8 : 0.05;
+  sbp += bpShockFactor + (Math.random() - 0.5) * 2;
+  
+  // Diastolic BP usually maintains a roughly 2/3 ratio to Systolic
+  dbp = sbp * 0.66 + (Math.random() - 0.5);
+
+  // --- 4. Temperature ---
+  // Slow metabolic drift
+  temp += (Math.random() - 0.5) * 0.05;
+
+  // --- 5. Bounds and Formatting ---
+  return {
+    hr: Math.round(Math.min(220, Math.max(40, hr))),
+    sbp: Math.round(Math.min(200, Math.max(60, sbp))),
+    dbp: Math.round(Math.min(120, Math.max(30, dbp))),
+    spo2: parseFloat(Math.min(100, Math.max(0, spo2)).toFixed(1)),
+    temp: parseFloat(Math.min(42, Math.max(34, temp)).toFixed(1)),
+    timestamp: new Date()
+  };
+};
+
+/**
+ * Updates all patients in the database using the physiological model
+ * and triggers AI sepsis prediction.
+ */
+const runICUSimulation = async (PatientModel, axios, AI_SERVICE_URL) => {
+  try {
+    const patients = await PatientModel.find();
 
     for (let patient of patients) {
+      // 1. Generate next physiological state based on current state
+      const nextVitals = simulatePhysiology(patient.vitals || {});
 
-      // random vitals fluctuation
-      patient.vitals.HR += Math.floor(Math.random()*10 - 5);
-      patient.vitals.O2Sat += Math.floor(Math.random()*4 - 2);
-      patient.vitals.Temp += (Math.random()*0.5 - 0.2);
-      patient.vitals.Resp += Math.floor(Math.random()*4 - 2);
+      // 2. Prepare data for AI Sepsis Prediction
+      // Ensure the keys match what your Python ai-service expects
+      const aiPayload = {
+        HR: nextVitals.hr,
+        O2Sat: nextVitals.spo2,
+        Temp: nextVitals.temp,
+        SBP: nextVitals.sbp,
+        MAP: (nextVitals.sbp + 2 * nextVitals.dbp) / 3, // Calculated Mean Arterial Pressure
+        Resp: 20, // Static for now or add to simulation
+        Age: patient.age
+      };
 
-      // clinical scoring
-      let score = 0;
+      let riskScore = patient.sepsisRisk;
+      try {
+        const aiResponse = await axios.post(`${AI_SERVICE_URL}/predict`, aiPayload, { timeout: 1000 });
+        riskScore = aiResponse.data.sepsis_risk || 0;
+      } catch (aiErr) {
+        console.error(`AI Service unreachable for patient ${patient._id}:`, aiErr.message);
+      }
 
-      if (patient.vitals.HR >= 130 || patient.vitals.HR <= 40) score += 3;
-      else if (patient.vitals.HR >= 110) score += 2;
-      else if (patient.vitals.HR >= 100) score += 1;
-
-      if (patient.vitals.O2Sat <= 85) score += 3;
-      else if (patient.vitals.O2Sat <= 90) score += 2;
-      else if (patient.vitals.O2Sat <= 94) score += 1;
-
-      if (patient.vitals.Temp >= 39.5 || patient.vitals.Temp <= 35) score += 2;
-      else if (patient.vitals.Temp >= 38) score += 1;
-
-      if (patient.vitals.Resp >= 30) score += 3;
-      else if (patient.vitals.Resp >= 22) score += 2;
-      else if (patient.vitals.Resp >= 18) score += 1;
-
-      if (patient.age >= 65) score += 1;
-
-      patient.risk_score = score;
-
-      if (score >= 8) patient.risk_level = "HIGH";
-      else if (score >= 4) patient.risk_level = "MEDIUM";
-      else patient.risk_level = "LOW";
-
-      await patient.save();
-
-      io.emit("icuUpdate", patient);
+      // 3. Persist the "Digital Twin" state to MongoDB
+      await PatientModel.findByIdAndUpdate(patient._id, {
+        vitals: nextVitals,
+        sepsisRisk: riskScore,
+        lastUpdated: new Date()
+      });
     }
+  } catch (err) {
+    console.error("Simulation Loop Error:", err);
+  }
+};
 
-  },5000);
-}
-
-module.exports = startICUSimulation;
+module.exports = { simulatePhysiology, runICUSimulation };

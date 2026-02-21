@@ -52,7 +52,10 @@ model.fit(X_train,y_train)
 acc = model.score(X_test,y_test)
 print("Clinical Model Accuracy:",acc)
 
-joblib.dump(model,"sepsis_model.pkl")
-joblib.dump(features,"model_features.pkl")
+
+joblib.dump(model, "sepsis_model.pkl")
+joblib.dump(X.columns.tolist(), "model_features.pkl")
+
+print("Model saved successfully (joblib)")
 
 print("Model saved successfully")

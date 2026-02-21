@@ -1,35 +1,41 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const http = require("http");
-const { Server } = require("socket.io");
-require("dotenv").config();
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const axios = require('axios');
+require('dotenv').config();
+
+const patientRoutes = require('./routes/patientRoutes');
+const Patient = require('./models/Patient');
+const { runICUSimulation } = require('./icuSimulator');
 
 const app = express();
+
+// Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+// Routes
+app.use('/api/patients', patientRoutes);
 
-mongoose.connect(process.env.MONGO_URI)
-.then(()=> console.log("MongoDB connected"))
-.catch(err=> console.log(err));
+// Environment Variables
+const PORT = process.env.PORT || 5000;
+const MONGO_URI = process.env.MONGO_URI;
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
-const patientRoutes = require("./routes/patientRoutes");
-app.use("/api/patients", patientRoutes);
+// Database Connection
+mongoose.connect(MONGO_URI)
+  .then(() => {
+    console.log('Connected to MongoDB');
+    
+    // Start the Digital Twin Simulation Loop
+    // This runs every 5 seconds to update all patient states
+    console.log('Starting Digital Twin ICU Simulation loop...');
+    setInterval(() => {
+      runICUSimulation(Patient, axios, AI_SERVICE_URL);
+    }, 5000); 
+  })
+  .catch(err => console.error('MongoDB connection error:', err));
 
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET","POST"]
-  }
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
-
-app.set("io", io);
-
-io.on("connection", (socket)=>{
-  console.log("ICU monitor connected");
-});
-const startICUSimulation = require("./icuSimulator");
-startICUSimulation(io);
-
-server.listen(5000, ()=> console.log("Server running on 5000"));

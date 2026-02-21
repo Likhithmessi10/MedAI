@@ -5,13 +5,4 @@ __pycache__
 *.pkl
 dist
 build
-
-# Ignore dataset directory
-dataset/
-/dataset/
-
-# Optionally ignore common data files
-*.csv
-*.xlsx
-*.parquet
-*.psv
+datasets
