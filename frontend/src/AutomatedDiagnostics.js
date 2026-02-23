@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import {
-    FileSearch,
     UploadCloud,
     BrainCircuit,
     CheckCircle,
@@ -16,6 +15,7 @@ const AutomatedDiagnostics = ({ setView }) => {
     const [result, setResult] = useState(null);
     const [file, setFile] = useState(null);
     const [error, setError] = useState(null);
+    const [toast, setToast] = useState(null);
     const fileInputRef = useRef(null);
 
     const handleDragOver = (e) => {
@@ -75,6 +75,14 @@ const AutomatedDiagnostics = ({ setView }) => {
         }
     };
 
+    const handleAction = (message) => {
+        setToast(message);
+        setTimeout(() => {
+            setToast(null);
+            clearFile(); // Reset the UI after an action
+        }, 3000);
+    };
+
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
             <div className="max-w-screen-xl mx-auto space-y-8">
@@ -95,6 +103,13 @@ const AutomatedDiagnostics = ({ setView }) => {
                         ← Back to Patient Nexus
                     </button>
                 </div>
+
+                {toast && (
+                    <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-6 py-3 rounded-full font-medium shadow-xl shadow-emerald-500/20 z-50 flex items-center gap-2 animate-in slide-in-from-top-4 fade-in duration-300">
+                        <CheckCircle className="w-5 h-5" />
+                        {toast}
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
@@ -131,11 +146,22 @@ const AutomatedDiagnostics = ({ setView }) => {
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
-                                <FileText className="w-16 h-16 text-violet-400 mb-4" />
-                                <p className="text-xl font-bold text-white mb-1 truncate px-4 w-full">
+                                {file.type.startsWith('image/') ? (
+                                    <div className="w-48 h-48 rounded-2xl overflow-hidden border-2 border-slate-700/50 mb-4 bg-slate-950 flex shadow-xl">
+                                        <img
+                                            src={URL.createObjectURL(file)}
+                                            alt="Scanned Upload"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                ) : (
+                                    <FileText className="w-16 h-16 text-violet-400 mb-4" />
+                                )}
+
+                                <p className="text-lg font-bold text-white mb-1 truncate px-4 w-full">
                                     {file.name}
                                 </p>
-                                <p className="text-slate-500 mb-8">
+                                <p className="text-slate-500 mb-6 text-sm">
                                     {(file.size / 1024 / 1024).toFixed(2)} MB
                                 </p>
 
@@ -231,10 +257,16 @@ const AutomatedDiagnostics = ({ setView }) => {
                                 </div>
 
                                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                                    <button className="px-4 py-2 border border-slate-700 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm transition-colors">
+                                    <button
+                                        onClick={() => handleAction("Diagnostic Report flagged for Senior Review")}
+                                        className="px-4 py-2 border border-slate-700 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm transition-colors"
+                                    >
                                         Request Human Review
                                     </button>
-                                    <button className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm transition-colors flex items-center gap-2">
+                                    <button
+                                        onClick={() => handleAction("Report successfully attached to Patient EMR")}
+                                        className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm transition-colors flex items-center gap-2"
+                                    >
                                         <CheckCircle className="w-4 h-4" /> Approve & Attach to EMR
                                     </button>
                                 </div>

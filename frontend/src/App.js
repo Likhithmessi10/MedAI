@@ -4,10 +4,7 @@ import {
   ShieldCheck,
   Server,
   BrainCircuit,
-  Cpu,
-  Bell,
-  Settings,
-  LogOut
+  Cpu
 } from "lucide-react";
 
 import PatientNexus from "./PatientNexus";
@@ -40,16 +37,16 @@ export default function App() {
 
   const navBtn = (id, icon, label, activeColor) => {
     const activeStyles = {
-      cyan: "bg-cyan-500/10 text-cyan-400 border-l-2 border-cyan-400",
-      violet: "bg-violet-500/10 text-violet-400 border-l-2 border-violet-400",
-      emerald: "bg-emerald-500/10 text-emerald-400 border-l-2 border-emerald-400",
-      blue: "bg-blue-500/10 text-blue-400 border-l-2 border-blue-400",
+      cyan: "bg-cyan-500/10 text-cyan-400",
+      violet: "bg-violet-500/10 text-violet-400",
+      emerald: "bg-emerald-500/10 text-emerald-400",
+      blue: "bg-blue-500/10 text-blue-400",
     };
     const isActive = view === id;
     return (
       <button
         onClick={() => setView(id)}
-        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 border-l-2 border-transparent
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150
           ${isActive
             ? activeStyles[activeColor]
             : "text-slate-500 hover:bg-slate-800/60 hover:text-slate-300"
@@ -69,9 +66,7 @@ export default function App() {
 
         {/* Logo */}
         <div className="h-16 flex items-center gap-3 px-5 border-b border-slate-800/60 shrink-0">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 shrink-0">
-            <Cpu className="w-4 h-4 text-white" />
-          </div>
+          <img src="/logo.svg" alt="MedAI Logo" className="w-8 h-8 drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]" />
           <p className="font-bold text-white tracking-tight text-[15px]">MedAI Nexus</p>
         </div>
 
@@ -90,13 +85,6 @@ export default function App() {
           {navBtn("devices", <Server className="w-4 h-4 shrink-0" />, "Device Interop Hub", "blue")}
         </div>
 
-        {/* Sign out */}
-        <div className="px-3 py-4 border-t border-slate-800/60 shrink-0">
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition-all duration-150 border-l-2 border-transparent">
-            <LogOut className="w-4 h-4 shrink-0" />
-            Sign Out
-          </button>
-        </div>
       </aside>
 
       {/* ── MAIN ── */}
@@ -119,13 +107,6 @@ export default function App() {
               <p className="text-xs font-bold text-slate-200 tabular-nums tracking-wide">{timeStr}</p>
               <p className="text-[10px] text-slate-600 tracking-wide">{dateStr}</p>
             </div>
-
-            <button className="p-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800/70 border border-transparent hover:border-slate-700/60 transition-all duration-150">
-              <Bell className="w-4 h-4" />
-            </button>
-            <button className="p-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800/70 border border-transparent hover:border-slate-700/60 transition-all duration-150">
-              <Settings className="w-4 h-4" />
-            </button>
 
             <button
               onClick={() => setView("simulator")}

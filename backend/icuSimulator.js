@@ -55,7 +55,7 @@ const simulatePhysiology = (currentVitals) => {
  * Updates all patients in the database using the physiological model
  * and triggers AI sepsis prediction.
  */
-const runICUSimulation = async (PatientModel, axios, AI_SERVICE_URL) => {
+const runICUSimulation = async (PatientModel, axios, AI_SERVICE_URL, io) => {
   try {
     const patients = await PatientModel.find();
 
@@ -85,11 +85,16 @@ const runICUSimulation = async (PatientModel, axios, AI_SERVICE_URL) => {
       }
 
       // 3. Persist the "Digital Twin" state to MongoDB
-      await PatientModel.findByIdAndUpdate(patient._id, {
+      const updatedPatient = await PatientModel.findByIdAndUpdate(patient._id, {
         vitals: nextVitals,
         sepsisRisk: riskScore,
         lastUpdated: new Date()
-      });
+      }, { new: true });
+
+      // 4. Emit the update to the connected Frontend clients via WebSockets
+      if (io) {
+        io.emit('vitalsUpdate', updatedPatient);
+      }
     }
   } catch (err) {
     console.error("Simulation Loop Error:", err);

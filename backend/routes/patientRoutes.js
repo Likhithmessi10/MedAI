@@ -40,5 +40,17 @@ router.get('/', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+// DELETE: Remove a patient by ID
+router.delete('/:id', async (req, res) => {
+  try {
+    const deletedPatient = await Patient.findByIdAndDelete(req.params.id);
+    if (!deletedPatient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+    res.json({ message: "Patient removed successfully", id: deletedPatient._id });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 module.exports = router;

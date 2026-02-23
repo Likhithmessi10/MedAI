@@ -1,6 +1,8 @@
 const express = require('express');
 const multer = require('multer');
 const axios = require('axios');
+const pdfParse = require('pdf-parse');
+const Tesseract = require('tesseract.js');
 const router = express.Router();
 
 // Configure multer for memory storage
@@ -41,54 +43,39 @@ router.post('/analyze', upload.single('document'), async (req, res) => {
         }
 
         try {
-            const prompt = `
-            You are MedAI Core, an expert medical diagnostic AI system running locally. 
-            Analyze this medical document or scan (Filename: ${originalname}). 
-            Identify whether it's an X-Ray, MRI, Lab Report, or general document.
-            Extract any medical findings, conditions, or anomalies.
-            Provide a confidence score (percentage string, e.g., '95.2%').
-            Provide a concise clinical recommendation.
-            Assess the risk level (Low, Medium, High, Critical).
+            let extractedText = '';
 
-            RESPOND ONLY VALID JSON. No markdown blocks, no text before or after.
-            {
-              "patient": "Unknown OR Extracted Name/ID",
-              "scanType": "Type of Doc/Scan + Context",
-              "findings": "String of key observations",
-              "confidence": "Percentage string",
-              "recommendation": "String",
-              "riskLevel": "Low/Medium/High/Critical"
-            }
-            `;
-
-            // Convert buffer to base64 for Ollama
-            const base64Image = buffer.toString('base64');
-
-            // Send request to Ollama Llama 3.2 Vision Model
-            const response = await axios.post("http://127.0.0.1:11434/api/generate", {
-                model: "llama3.2-vision",
-                prompt: prompt,
-                images: [base64Image],
-                stream: false,
-                format: "json"
-            });
-
-            let responseText = response.data.response;
-
-            // Clean up possible markdown wrappers
-            if (responseText.startsWith('```json')) {
-                responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+            // 1. Text Extraction
+            if (mimetype === 'application/pdf') {
+                const pdfData = await pdfParse(buffer);
+                extractedText = pdfData.text;
+            } else if (mimetype.startsWith('image/')) {
+                // Warning: Tesseract takes a few seconds on large images
+                const { data } = await Tesseract.recognize(buffer, 'eng');
+                extractedText = data.text;
             }
 
-            const analysisResult = JSON.parse(responseText);
-            res.status(200).json(analysisResult);
+            if (!extractedText || extractedText.trim().length === 0) {
+                // If OCR fails, send a fallback message
+                extractedText = "Unable to extract text from document. Document may be a pure physical scan without recognizable text layers.";
+            }
+
+            // 2. Send Extracted Text to Python AI Service
+            const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+
+            const aiResponse = await axios.post(`${AI_SERVICE_URL}/analyze-report`, {
+                text: extractedText,
+                filename: originalname
+            }, { timeout: 30000 }); // 30 second timeout for OCR + Llama
+
+            res.status(200).json(aiResponse.data);
 
         } catch (aiErr) {
-            console.error('Ollama Local API Error:', aiErr.message || aiErr);
+            console.error('Python AI Service Error:', aiErr.message || aiErr);
             if (aiErr.code === 'ECONNREFUSED') {
-                return res.status(503).json({ error: 'Local Ollama engine is not running on port 11434.' });
+                return res.status(503).json({ error: 'Python AI Engine is not running on port 8000.' });
             }
-            res.status(500).json({ error: 'Local AI Analysis engine failed to respond.' });
+            res.status(500).json({ error: 'AI Analysis engine failed to respond.' });
         }
     } catch (error) {
         console.error('Error in document analysis:', error);

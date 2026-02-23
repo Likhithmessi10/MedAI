@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Server,
     Activity,
@@ -12,14 +12,38 @@ import {
 } from 'lucide-react';
 
 const DeviceInteroperabilityHub = ({ setView }) => {
-    const [devices] = useState([
-        { id: "MRI-01", type: "Imaging", location: "Radiology Wing A", status: "online", latency: "12ms", dataRate: "450 MB/s" },
-        { id: "VENT-04", type: "Life Support", location: "ICU Bed 4", status: "online", latency: "5ms", dataRate: "1.2 MB/s" },
-        { id: "VENT-08", type: "Life Support", location: "ICU Bed 8", status: "offline", latency: "-", dataRate: "-" },
-        { id: "ECG-12", type: "Monitoring", location: "Cardiology", status: "online", latency: "18ms", dataRate: "5.5 MB/s" },
-        { id: "PUMP-22", type: "Infusion", location: "Ward 3", status: "warning", latency: "150ms", dataRate: "0.1 MB/s" },
-        { id: "CTX-01", type: "Imaging", location: "ER", status: "online", latency: "22ms", dataRate: "320 MB/s" }
+    const [devices, setDevices] = useState([
+        { id: "MRI-01", type: "Imaging", location: "Radiology Wing A", status: "online", latency: "12ms", dataRate: "450 MB/s", baseRate: 450 },
+        { id: "VENT-04", type: "Life Support", location: "ICU Bed 4", status: "online", latency: "5ms", dataRate: "1.2 MB/s", baseRate: 1.2 },
+        { id: "VENT-08", type: "Life Support", location: "ICU Bed 8", status: "offline", latency: "-", dataRate: "-", baseRate: 0 },
+        { id: "ECG-12", type: "Monitoring", location: "Cardiology", status: "online", latency: "18ms", dataRate: "5.5 MB/s", baseRate: 5.5 },
+        { id: "PUMP-22", type: "Infusion", location: "Ward 3", status: "warning", latency: "150ms", dataRate: "0.1 MB/s", baseRate: 0.1 },
+        { id: "CTX-01", type: "Imaging", location: "ER", status: "online", latency: "22ms", dataRate: "320 MB/s", baseRate: 320 }
     ]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setDevices(prev => prev.map(dev => {
+                if (dev.status === "offline") return dev;
+
+                // Random latency fluctuation
+                const baseLatency = dev.status === "warning" ? 100 : 10;
+                const newLatency = Math.floor(baseLatency + Math.random() * 20) + "ms";
+
+                // Random data rate fluctuation
+                const rateMutation = dev.baseRate * (1 + (Math.random() * 0.1 - 0.05));
+                const newRate = rateMutation.toFixed(1) + " MB/s";
+
+                // 2% chance to briefly throw a warning status
+                let newStatus = dev.status;
+                if (dev.status === "online" && Math.random() > 0.98) newStatus = "warning";
+                else if (dev.status === "warning" && Math.random() > 0.7) newStatus = "online";
+
+                return { ...dev, latency: newLatency, dataRate: newRate, status: newStatus };
+            }));
+        }, 2000);
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">

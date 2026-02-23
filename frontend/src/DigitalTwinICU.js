@@ -14,12 +14,15 @@ import {
   ArrowLeft
 } from 'lucide-react';
 
+import { io } from 'socket.io-client';
+
 const DigitalTwinICU = ({ setView }) => {
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const API_BASE_URL = 'http://localhost:5000/api/patients';
+  const SOCKET_URL = 'http://localhost:5000';
 
   const fetchData = async () => {
     try {
@@ -33,9 +36,35 @@ const DigitalTwinICU = ({ setView }) => {
   };
 
   useEffect(() => {
-    fetchData();
-    const timer = setInterval(fetchData, 5000);
-    return () => clearInterval(timer);
+    fetchData(); // Initial load
+
+    // Setup Socket.IO connection
+    const socket = io(SOCKET_URL);
+
+    socket.on('connect', () => {
+      setError(null);
+    });
+
+    socket.on('connect_error', () => {
+      setError("Twin Sync Lost - Check Backend Server");
+    });
+
+    socket.on('vitalsUpdate', (updatedPatient) => {
+      setPatients(prevPatients => {
+        const patientExists = prevPatients.some(p => p._id === updatedPatient._id);
+        if (patientExists) {
+          // Update existing patient inline
+          return prevPatients.map(p => p._id === updatedPatient._id ? updatedPatient : p);
+        } else {
+          // Add new patient if not previously fetched
+          return [...prevPatients, updatedPatient];
+        }
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   if (loading) return (
@@ -62,9 +91,7 @@ const DigitalTwinICU = ({ setView }) => {
           </button>
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                <Activity className="w-4 h-4 text-white stroke-[2.5px]" />
-              </div>
+              <img src="/logo.svg" alt="MedAI Logo" className="w-9 h-9 drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]" />
               <h1 className="text-3xl font-black tracking-tight text-white">
                 MEDAI <span className="text-cyan-400">CORE</span>
               </h1>
@@ -116,13 +143,7 @@ const PatientTwinCard = ({ patient }) => {
         : 'border-slate-800/60 hover:border-blue-500/30 hover:shadow-blue-950/40'
       }`}>
 
-      {/* Colored left accent bar */}
-      <div className={`absolute top-0 left-0 w-1 h-full transition-all duration-300 group-hover:w-[3px] ${isCritical ? 'bg-gradient-to-b from-red-500 to-red-800'
-        : isWarning ? 'bg-gradient-to-b from-yellow-400 to-yellow-700'
-          : 'bg-gradient-to-b from-blue-500 to-blue-800'
-        }`} />
-
-      <div className="p-6 pl-7">
+      <div className="p-6">
 
         {/* Patient header */}
         <div className="flex justify-between items-start mb-6">

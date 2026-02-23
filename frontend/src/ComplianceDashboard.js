@@ -1,21 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    Building2,
     CheckCircle2,
     AlertTriangle,
     Clock,
     ShieldCheck,
     Users,
-    FileCheck,
-    TrendingDown
+    FileCheck
 } from 'lucide-react';
 
 const ComplianceDashboard = ({ setView }) => {
-    const [metrics] = useState([
+    const [metrics, setMetrics] = useState([
         {
             id: 1,
             title: "Hand Hygiene Compliance",
             value: "92%",
+            baseValue: 92,
             target: "95%",
             status: "warning",
             trend: "+2% from last week",
@@ -25,6 +24,7 @@ const ComplianceDashboard = ({ setView }) => {
             id: 2,
             title: "Equipment Calibration",
             value: "98%",
+            baseValue: 98,
             target: "100%",
             status: "good",
             trend: "All severe items calibrated",
@@ -34,6 +34,7 @@ const ComplianceDashboard = ({ setView }) => {
             id: 3,
             title: "Incident Reporting Time",
             value: "1.2 hrs",
+            baseValue: 1.2,
             target: "< 2 hrs",
             status: "good",
             trend: "Faster by 30 mins",
@@ -43,12 +44,34 @@ const ComplianceDashboard = ({ setView }) => {
             id: 4,
             title: "Staff Certification",
             value: "85%",
+            baseValue: 85,
             target: "100%",
             status: "critical",
             trend: "15 nurses pending renewal",
             icon: <AlertTriangle className="text-red-500" />
         }
     ]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setMetrics(prev => prev.map(m => {
+                if (m.id === 1) { // Hand Hygiene
+                    const val = m.baseValue + Math.floor(Math.random() * 5 - 2);
+                    return { ...m, value: `${val}%`, trend: `${val >= m.baseValue ? '+' : '-'}${Math.abs(val - m.baseValue)}% today`, status: val < 91 ? 'warning' : 'good' };
+                }
+                if (m.id === 3) { // Incident Reporting Time
+                    const val = (m.baseValue + (Math.random() * 0.4 - 0.2)).toFixed(1);
+                    return { ...m, value: `${val} hrs`, trend: `Avg updated just now` };
+                }
+                if (m.id === 2 && Math.random() > 0.8) { // Equipment
+                    const val = m.baseValue + (Math.random() > 0.5 ? 1 : -1);
+                    return { ...m, value: `${val}%`, status: val === 100 ? 'good' : 'warning' };
+                }
+                return m;
+            }));
+        }, 4000);
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
@@ -90,8 +113,8 @@ const ComplianceDashboard = ({ setView }) => {
                                     {m.icon}
                                 </div>
                                 <span className={`text-xs px-2 py-1 rounded-full border ${m.status === 'good' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
-                                        m.status === 'warning' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' :
-                                            'bg-red-500/10 border-red-500/30 text-red-400'
+                                    m.status === 'warning' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' :
+                                        'bg-red-500/10 border-red-500/30 text-red-400'
                                     }`}>
                                     {m.status.toUpperCase()}
                                 </span>

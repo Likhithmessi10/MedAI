@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { io } from "socket.io-client";
 import {
     Activity,
     Users,
@@ -14,7 +15,8 @@ import {
     ChevronRight,
     Cpu,
     TrendingUp,
-    Search
+    Search,
+    Trash2
 } from "lucide-react";
 
 const FIELD_META = {
@@ -49,7 +51,25 @@ const PatientNexus = () => {
         }
     };
 
-    useEffect(() => { fetchPatients(); }, []);
+    const SOCKET_URL = 'http://localhost:5000';
+
+    useEffect(() => {
+        fetchPatients();
+
+        const socket = io(SOCKET_URL);
+        socket.on('vitalsUpdate', (updatedPatient) => {
+            if (!updatedPatient || !updatedPatient._id) return;
+            setPatients(prev => {
+                const exists = prev.some(p => p && p._id === updatedPatient._id);
+                if (exists) {
+                    return prev.map(p => p && p._id === updatedPatient._id ? updatedPatient : p);
+                }
+                return [...prev, updatedPatient];
+            });
+        });
+
+        return () => socket.disconnect();
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -80,9 +100,27 @@ const PatientNexus = () => {
         }
     };
 
-    const high = patients.filter(p => p.risk_level === "HIGH").length;
-    const med = patients.filter(p => p.risk_level === "MEDIUM").length;
-    const low = patients.filter(p => p.risk_level === "LOW").length;
+    const deletePatient = async (id) => {
+        if (!window.confirm("Are you sure you want to remove this patient from the registry?")) return;
+
+        try {
+            await axios.delete(`http://localhost:5000/api/patients/${id}`);
+            setPatients(prev => prev.filter(p => p._id !== id));
+        } catch (err) {
+            alert("Error removing patient: " + (err.response?.data?.message || err.message));
+        }
+    };
+
+    const getRiskLevel = (score) => {
+        if (!score && score !== 0) return "LOW";
+        if (score >= 0.7) return "HIGH";
+        if (score >= 0.4) return "MEDIUM";
+        return "LOW";
+    };
+
+    const high = patients.filter(p => getRiskLevel(p.sepsisRisk) === "HIGH").length;
+    const med = patients.filter(p => getRiskLevel(p.sepsisRisk) === "MEDIUM").length;
+    const low = patients.filter(p => getRiskLevel(p.sepsisRisk) === "LOW").length;
 
     const filteredPatients = patients.filter(p =>
         p.name?.toLowerCase().includes(search.toLowerCase())
@@ -235,8 +273,8 @@ const PatientNexus = () => {
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-slate-800/60 bg-slate-950/30">
-                                    {["Patient", "Age / Gender", "Heart Rate", "O₂ Sat", "Temp", "Resp Rate", "Risk Score", "Risk Level"].map(h => (
-                                        <th key={h} className="px-5 py-3.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-widest whitespace-nowrap">
+                                    {["Patient", "Age / Gender", "Heart Rate", "O₂ Sat", "Temp", "Resp Rate", "Risk Score", "Risk Level", ""].map((h, i) => (
+                                        <th key={i} className="px-5 py-3.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-widest whitespace-nowrap">
                                             {h}
                                         </th>
                                     ))}
@@ -304,8 +342,8 @@ const PatientNexus = () => {
                                             <div className="flex items-center gap-2">
                                                 <div className="h-1.5 w-16 bg-slate-800 rounded-full overflow-hidden">
                                                     <div
-                                                        className={`h-full rounded-full transition-all duration-700 ${p.risk_level === "HIGH" ? "bg-gradient-to-r from-red-600 to-red-400" :
-                                                            p.risk_level === "MEDIUM" ? "bg-gradient-to-r from-amber-600 to-amber-400" :
+                                                        className={`h-full rounded-full transition-all duration-700 ${getRiskLevel(p.sepsisRisk) === "HIGH" ? "bg-gradient-to-r from-red-600 to-red-400" :
+                                                            getRiskLevel(p.sepsisRisk) === "MEDIUM" ? "bg-gradient-to-r from-amber-600 to-amber-400" :
                                                                 "bg-gradient-to-r from-emerald-600 to-emerald-400"
                                                             }`}
                                                         style={{ width: `${Math.min((p.sepsisRisk || 0) * 100, 100)}%` }}
@@ -317,19 +355,29 @@ const PatientNexus = () => {
                                             </div>
                                         </td>
 
-                                        {/* Risk badge */}
                                         <td className="px-5 py-4">
-                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${p.risk_level === "HIGH"
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${getRiskLevel(p.sepsisRisk) === "HIGH"
                                                 ? "bg-red-500/10 border-red-500/30 text-red-400"
-                                                : p.risk_level === "MEDIUM"
+                                                : getRiskLevel(p.sepsisRisk) === "MEDIUM"
                                                     ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
                                                     : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
                                                 }`}>
-                                                {p.risk_level === "HIGH" ? <ShieldX className="w-3 h-3" /> :
-                                                    p.risk_level === "MEDIUM" ? <ShieldAlert className="w-3 h-3" /> :
+                                                {getRiskLevel(p.sepsisRisk) === "HIGH" ? <ShieldX className="w-3 h-3" /> :
+                                                    getRiskLevel(p.sepsisRisk) === "MEDIUM" ? <ShieldAlert className="w-3 h-3" /> :
                                                         <ShieldCheck className="w-3 h-3" />}
-                                                {p.risk_level}
+                                                {getRiskLevel(p.sepsisRisk)}
                                             </span>
+                                        </td>
+
+                                        {/* Actions */}
+                                        <td className="px-5 py-4 text-right">
+                                            <button
+                                                onClick={() => deletePatient(p._id)}
+                                                className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                title="Remove Patient"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
