@@ -10,10 +10,11 @@ import {
   ShieldAlert,
   ChevronRight,
   Wifi,
-  WifiOff
+  WifiOff,
+  ArrowLeft
 } from 'lucide-react';
 
-const DigitalTwinICU = () => {
+const DigitalTwinICU = ({ setView }) => {
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -51,23 +52,32 @@ const DigitalTwinICU = () => {
 
       {/* Header */}
       <header className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center mb-10 pb-6 border-b border-slate-800/60 gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-              <Activity className="w-4 h-4 text-white stroke-[2.5px]" />
+        <div className="flex items-start gap-3">
+          <button
+            onClick={() => setView && setView('dashboard')}
+            className="mt-1 p-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors shrink-0"
+            title="Back to Dashboard"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <Activity className="w-4 h-4 text-white stroke-[2.5px]" />
+              </div>
+              <h1 className="text-3xl font-black tracking-tight text-white">
+                MEDAI <span className="text-cyan-400">CORE</span>
+              </h1>
             </div>
-            <h1 className="text-3xl font-black tracking-tight text-white">
-              MEDAI <span className="text-cyan-400">CORE</span>
-            </h1>
+            <p className="text-slate-500 font-mono text-[11px] uppercase tracking-[0.2em] ml-12">
+              Digital Twin ICU Management System
+            </p>
           </div>
-          <p className="text-slate-500 font-mono text-[11px] uppercase tracking-[0.2em] ml-12">
-            Digital Twin ICU Management System
-          </p>
         </div>
 
         <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${error
-            ? 'bg-red-950/40 border-red-500/20'
-            : 'bg-emerald-950/40 border-emerald-500/20'
+          ? 'bg-red-950/40 border-red-500/20'
+          : 'bg-emerald-950/40 border-emerald-500/20'
           }`}>
           {error
             ? <WifiOff className="w-4 h-4 text-red-400" />
@@ -100,16 +110,16 @@ const PatientTwinCard = ({ patient }) => {
 
   return (
     <div className={`group relative bg-slate-900 border rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl ${isCritical
-        ? 'border-red-500/30 hover:border-red-500/50 hover:shadow-red-950/50'
-        : isWarning
-          ? 'border-yellow-500/30 hover:border-yellow-500/50 hover:shadow-yellow-950/50'
-          : 'border-slate-800/60 hover:border-blue-500/30 hover:shadow-blue-950/40'
+      ? 'border-red-500/30 hover:border-red-500/50 hover:shadow-red-950/50'
+      : isWarning
+        ? 'border-yellow-500/30 hover:border-yellow-500/50 hover:shadow-yellow-950/50'
+        : 'border-slate-800/60 hover:border-blue-500/30 hover:shadow-blue-950/40'
       }`}>
 
       {/* Colored left accent bar */}
       <div className={`absolute top-0 left-0 w-1 h-full transition-all duration-300 group-hover:w-[3px] ${isCritical ? 'bg-gradient-to-b from-red-500 to-red-800'
-          : isWarning ? 'bg-gradient-to-b from-yellow-400 to-yellow-700'
-            : 'bg-gradient-to-b from-blue-500 to-blue-800'
+        : isWarning ? 'bg-gradient-to-b from-yellow-400 to-yellow-700'
+          : 'bg-gradient-to-b from-blue-500 to-blue-800'
         }`} />
 
       <div className="p-6 pl-7">
@@ -136,10 +146,10 @@ const PatientTwinCard = ({ patient }) => {
 
           <div className="text-right shrink-0 ml-4">
             <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-bold tracking-wide uppercase ${isCritical
-                ? 'bg-red-500/10 text-red-400 border-red-500/30'
-                : isWarning
-                  ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+              ? 'bg-red-500/10 text-red-400 border-red-500/30'
+              : isWarning
+                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
               }`}>
               {isCritical && <ShieldAlert size={12} />}
               {isCritical ? 'High Risk' : isWarning ? 'Warning' : 'Stable'}
@@ -199,10 +209,10 @@ const PatientTwinCard = ({ patient }) => {
           <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden mb-1">
             <div
               className={`h-full rounded-full transition-all duration-1000 ease-out ${isCritical
-                  ? 'bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
-                  : isWarning
-                    ? 'bg-gradient-to-r from-yellow-600 to-yellow-400'
-                    : 'bg-gradient-to-r from-blue-600 to-blue-400'
+                ? 'bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
+                : isWarning
+                  ? 'bg-gradient-to-r from-yellow-600 to-yellow-400'
+                  : 'bg-gradient-to-r from-blue-600 to-blue-400'
                 }`}
               style={{ width: `${riskPercent}%` }}
             />
@@ -225,8 +235,8 @@ const PatientTwinCard = ({ patient }) => {
 
 const VitalBox = ({ label, value, unit, icon, isAlert }) => (
   <div className={`p-3 rounded-xl border transition-colors ${isAlert
-      ? 'bg-red-500/5 border-red-500/20'
-      : 'bg-slate-800/30 border-slate-800/60 hover:border-slate-700/60'
+    ? 'bg-red-500/5 border-red-500/20'
+    : 'bg-slate-800/30 border-slate-800/60 hover:border-slate-700/60'
     }`}>
     <div className="flex items-center gap-1.5 mb-2">
       {icon}

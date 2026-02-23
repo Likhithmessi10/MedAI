@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     FileSearch,
     UploadCloud,
@@ -7,28 +7,72 @@ import {
     Stethoscope,
     Microscope,
     FileText,
-    AlertTriangle
+    AlertTriangle,
+    X
 } from 'lucide-react';
 
 const AutomatedDiagnostics = ({ setView }) => {
     const [analyzing, setAnalyzing] = useState(false);
     const [result, setResult] = useState(null);
+    const [file, setFile] = useState(null);
+    const [error, setError] = useState(null);
+    const fileInputRef = useRef(null);
 
-    const handleSimulateAnalysis = () => {
+    const handleDragOver = (e) => {
+        e.preventDefault();
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            setFile(e.dataTransfer.files[0]);
+            setResult(null); // Reset result on new file
+            setError(null);
+        }
+    };
+
+    const handleFileChange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            setFile(e.target.files[0]);
+            setResult(null); // Reset result on new file
+            setError(null);
+        }
+    };
+
+    const clearFile = () => {
+        setFile(null);
+        setResult(null);
+        setError(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleSimulateAnalysis = async () => {
+        if (!file) return;
+
         setAnalyzing(true);
         setResult(null);
-        // Simulate AI processing delay
-        setTimeout(() => {
-            setAnalyzing(false);
-            setResult({
-                patient: "John Doe (ID: 84920)",
-                scanType: "Chest X-Ray (AP View)",
-                findings: "Ground-glass opacities observed in the lower right lobe. Mild cardiomegaly present. No signs of pleural effusion.",
-                confidence: "94.2%",
-                recommendation: "Pneumonia likely. Recommend immediate pulmonology consult and ABG test.",
-                riskLevel: "High"
+        setError(null);
+
+        const formData = new FormData();
+        formData.append('document', file);
+
+        try {
+            const response = await fetch('http://localhost:5000/api/diagnostics/analyze', {
+                method: 'POST',
+                body: formData,
             });
-        }, 2500);
+
+            if (!response.ok) {
+                throw new Error('Analysis failed');
+            }
+
+            const data = await response.json();
+            setResult(data);
+        } catch (err) {
+            setError(err.message || 'Error connecting to the analysis engine.');
+        } finally {
+            setAnalyzing(false);
+        }
     };
 
     return (
@@ -56,33 +100,73 @@ const AutomatedDiagnostics = ({ setView }) => {
 
                     {/* Upload Area */}
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 flex flex-col items-center justify-center text-center min-h-[400px]">
-                        <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-6 border border-slate-700">
-                            <UploadCloud className="w-10 h-10 text-slate-400" />
-                        </div>
-                        <h3 className="text-xl font-bold text-white mb-2">Upload Medical Scan</h3>
-                        <p className="text-slate-500 text-sm mb-8 max-w-sm">
-                            Drag and drop DICOM files, X-Rays, MRI scans, or Pathology reports to run through the MedAI diagnostic pipeline.
-                        </p>
-                        <button
-                            className="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-violet-500/20 flex items-center gap-2"
-                            onClick={handleSimulateAnalysis}
-                            disabled={analyzing}
-                        >
-                            {analyzing ? (
-                                <>
-                                    <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                                    </svg>
-                                    Running AI Models...
-                                </>
-                            ) : (
-                                <>
-                                    <FileSearch className="w-5 h-5" /> Run Simulated Scan Analysis
-                                </>
-                            )}
-                        </button>
-                        <p className="text-xs text-slate-600 mt-4">Supported formats: .dcm, .nii, .jpeg, .pdf</p>
+                        {!file ? (
+                            <div
+                                className="w-full flex-1 border-2 border-dashed border-slate-700 hover:border-violet-500/50 hover:bg-violet-500/5 rounded-xl flex flex-col items-center justify-center transition-colors cursor-pointer group p-6"
+                                onDragOver={handleDragOver}
+                                onDrop={handleDrop}
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <div className="w-20 h-20 bg-slate-800 group-hover:bg-violet-500/20 rounded-full flex items-center justify-center mb-6 border border-slate-700 transition-colors">
+                                    <UploadCloud className="w-10 h-10 text-slate-400 group-hover:text-violet-400 transition-colors" />
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-2">Upload Medical Scan</h3>
+                                <p className="text-slate-500 text-sm mb-4 max-w-sm">
+                                    Click to upload or drag and drop X-Rays, MRI scans, or Pathology reports to run through the MedAI diagnostic pipeline.
+                                </p>
+                                <p className="text-xs text-slate-600">Supported formats: .jpg, .jpeg, .png, .pdf (Max. 10MB)</p>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                    accept=".jpg,.jpeg,.png,.pdf"
+                                />
+                            </div>
+                        ) : (
+                            <div className="w-full flex flex-col items-center flex-1 justify-center relative">
+                                <button
+                                    onClick={clearFile}
+                                    className="absolute top-0 right-0 p-2 text-slate-500 hover:text-red-400 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                                <FileText className="w-16 h-16 text-violet-400 mb-4" />
+                                <p className="text-xl font-bold text-white mb-1 truncate px-4 w-full">
+                                    {file.name}
+                                </p>
+                                <p className="text-slate-500 mb-8">
+                                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+
+                                {error && (
+                                    <div className="mb-6 p-4 rounded-xl border border-red-500/30 bg-red-500/10 flex items-start gap-3 text-left w-full max-w-md">
+                                        <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                                        <p className="text-red-400 text-sm">{error}</p>
+                                    </div>
+                                )}
+
+                                <button
+                                    className="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-violet-500/20 flex items-center gap-2 disabled:bg-slate-800 disabled:text-slate-500 disabled:shadow-none"
+                                    onClick={handleSimulateAnalysis}
+                                    disabled={analyzing}
+                                >
+                                    {analyzing ? (
+                                        <>
+                                            <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                            </svg>
+                                            Running Advanced AI Models...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <BrainCircuit className="w-5 h-5" /> Run Local Llama Analysis
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Results Area */}
@@ -101,7 +185,10 @@ const AutomatedDiagnostics = ({ setView }) => {
                         {analyzing && (
                             <div className="flex flex-col items-center justify-center h-64 text-violet-400 gap-4">
                                 <BrainCircuit className="w-12 h-12 animate-pulse" />
-                                <p className="animate-pulse font-medium">Connecting to MedAI Model Engine...</p>
+                                <p className="animate-pulse font-medium text-center">
+                                    Connecting to Local Llama 3.2 Engine...<br />
+                                    <span className="text-sm font-normal text-slate-400">Processing locally (may take 10-20 seconds on CPU/GPU)</span>
+                                </p>
                             </div>
                         )}
 

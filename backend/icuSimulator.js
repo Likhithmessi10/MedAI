@@ -5,18 +5,18 @@
 
 const simulatePhysiology = (currentVitals) => {
   // Destructure current values with clinical defaults if missing
-  let { 
-    hr = 80, 
-    sbp = 120, 
-    dbp = 80, 
-    spo2 = 98, 
-    temp = 37.0 
+  let {
+    hr = 80,
+    sbp = 120,
+    dbp = 80,
+    spo2 = 98,
+    temp = 37.0
   } = currentVitals;
 
   // --- 1. Sepsis/Shock Simulation Logic ---
   // We simulate a "drift" towards instability. 
   // If SpO2 drops, SBP usually follows, and HR spikes to compensate.
-  
+
   // A small downward bias (0.52 instead of 0.5) makes the patient gradually 
   // prone to "crashing" unless the simulation reset logic is triggered elsewhere.
   const spo2Drift = (Math.random() - 0.52) * 0.8;
@@ -32,7 +32,7 @@ const simulatePhysiology = (currentVitals) => {
   // If SpO2 is critically low (< 85%), simulate Septic Shock (BP drop).
   const bpShockFactor = spo2 < 85 ? -0.8 : 0.05;
   sbp += bpShockFactor + (Math.random() - 0.5) * 2;
-  
+
   // Diastolic BP usually maintains a roughly 2/3 ratio to Systolic
   dbp = sbp * 0.66 + (Math.random() - 0.5);
 
@@ -77,7 +77,8 @@ const runICUSimulation = async (PatientModel, axios, AI_SERVICE_URL) => {
 
       let riskScore = patient.sepsisRisk;
       try {
-        const aiResponse = await axios.post(`${AI_SERVICE_URL}/predict`, aiPayload, { timeout: 1000 });
+        // Increased timeout from 1000ms to 15000ms because local Llama reasoning takes longer than the old Scikit-Learn model.
+        const aiResponse = await axios.post(`${AI_SERVICE_URL}/predict`, aiPayload, { timeout: 15000 });
         riskScore = aiResponse.data.sepsis_risk || 0;
       } catch (aiErr) {
         console.error(`AI Service unreachable for patient ${patient._id}:`, aiErr.message);

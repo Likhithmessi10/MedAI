@@ -42,7 +42,7 @@ const PatientNexus = () => {
 
     const fetchPatients = async () => {
         try {
-            const res = await axios.get("http://localhost:5000/api/patients/all");
+            const res = await axios.get("http://localhost:5000/api/patients");
             setPatients(res.data);
         } catch (err) {
             console.error(err);
@@ -305,8 +305,8 @@ const PatientNexus = () => {
                                                 <div className="h-1.5 w-16 bg-slate-800 rounded-full overflow-hidden">
                                                     <div
                                                         className={`h-full rounded-full transition-all duration-700 ${p.risk_level === "HIGH" ? "bg-gradient-to-r from-red-600 to-red-400" :
-                                                                p.risk_level === "MEDIUM" ? "bg-gradient-to-r from-amber-600 to-amber-400" :
-                                                                    "bg-gradient-to-r from-emerald-600 to-emerald-400"
+                                                            p.risk_level === "MEDIUM" ? "bg-gradient-to-r from-amber-600 to-amber-400" :
+                                                                "bg-gradient-to-r from-emerald-600 to-emerald-400"
                                                             }`}
                                                         style={{ width: `${Math.min((p.sepsisRisk || 0) * 100, 100)}%` }}
                                                     />
@@ -320,10 +320,10 @@ const PatientNexus = () => {
                                         {/* Risk badge */}
                                         <td className="px-5 py-4">
                                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${p.risk_level === "HIGH"
-                                                    ? "bg-red-500/10 border-red-500/30 text-red-400"
-                                                    : p.risk_level === "MEDIUM"
-                                                        ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                                                        : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                                                ? "bg-red-500/10 border-red-500/30 text-red-400"
+                                                : p.risk_level === "MEDIUM"
+                                                    ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                                                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
                                                 }`}>
                                                 {p.risk_level === "HIGH" ? <ShieldX className="w-3 h-3" /> :
                                                     p.risk_level === "MEDIUM" ? <ShieldAlert className="w-3 h-3" /> :

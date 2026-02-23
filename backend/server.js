@@ -5,6 +5,7 @@ const axios = require('axios');
 require('dotenv').config();
 
 const patientRoutes = require('./routes/patientRoutes');
+const diagnosticRoutes = require('./routes/diagnosticRoutes');
 const Patient = require('./models/Patient');
 const { runICUSimulation } = require('./icuSimulator');
 
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/patients', patientRoutes);
+app.use('/api/diagnostics', diagnosticRoutes);
 
 // Environment Variables
 const PORT = process.env.PORT || 5000;
@@ -26,13 +28,13 @@ const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log('Connected to MongoDB');
-    
+
     // Start the Digital Twin Simulation Loop
     // This runs every 5 seconds to update all patient states
     console.log('Starting Digital Twin ICU Simulation loop...');
     setInterval(() => {
       runICUSimulation(Patient, axios, AI_SERVICE_URL);
-    }, 5000); 
+    }, 5000);
   })
   .catch(err => console.error('MongoDB connection error:', err));
 
